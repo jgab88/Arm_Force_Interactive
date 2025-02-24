@@ -1,0 +1,7 @@
+What the application is aiming to do is to have a visual representation of the system while being able to move the 3 (red circles) pivot points. The yellow block represents where the focus of forces. Ill post a simple explanation of the original problem:
+
+"I need help solving a physics problem on a mechanical assembly. I have simplified the mechanics of it on a sketch. Ill attach the picture of what i currently have. There are dimensions on it in inches, Im not sure if thats the necessary dimensions needed.
+
+What i need to find out. I need to know how much force the yellow block at the end of the horizontal arm exerts if the air cylinder pushes at 150psi and moves .5 inches up(vertically). The green figure represents the assembly attached to the cylinders shaft - it all moves corresponding to the length of shaft stroke. There is a cross link attaching the air cylinders assembly to the horizontal arm assembly, it is blue. The pivot points are marked in red"
+
+The original problem evolved to trying to understand the forces on the system with relations to psi at the cylinder, deflection of external forces on the pivot arm's angle, and position stroke of the cylinders shaft (up or down). This led us to use python to generate 3D graphs with 3 axis that we could rotate in 3d space. We concluded that we should create a project that would allow us to move linkages in a 2D space, and automatically update the variables on the python script and then update the visual representation of the output (3d graphs).
