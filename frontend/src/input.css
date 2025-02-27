@@ -1,1 +1,19 @@
 @import "tailwindcss";
+.app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .app-header {
+    margin-bottom: 20px;
+  }
+  
+  .app-container {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .simulation-mode {
+    background-color: #f0f8ff;
+  }

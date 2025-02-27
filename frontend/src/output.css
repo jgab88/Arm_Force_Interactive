@@ -2459,3 +2459,16 @@
   syntax: "*";
   inherits: false;
 }
+.app.simulation-mode {
+  background-color: #f0f8ff; /* Light blue background */
+}
+
+.simulation-active {
+  color: #0066cc;
+  font-weight: bold;
+}
+
+/* Add animation for the cylinder when it's moving */
+.cylinder-rod.animating {
+  transition: all 0.3s ease-in-out;
+}
