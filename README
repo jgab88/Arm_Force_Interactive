@@ -1,0 +1,160 @@
+# RLF Linkage Analysis Tool
+
+An interactive visualization and analysis tool for mechanical linkage systems, specifically focusing on pneumatic cylinder assemblies with multi-point linkages. The tool combines real-time 2D manipulation with instant 3D force analysis.
+
+## Project Structure
+
+The application follows a client-server architecture:
+
+- **Frontend**: React.js application for interactive visualization and UI
+- **Backend**: Python FastAPI server for complex calculations and analysis
+
+## Features
+
+- Interactive 2D visualization of mechanical linkage systems
+- Real-time manipulation of pivot points and geometry
+- Dynamic force calculation based on cylinder position
+- 3D visualization of force-position relationships
+- Mechanical advantage and torque analysis
+- WebSocket communication for real-time updates
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm/yarn for the frontend
+- Python 3.9+ for the backend
+- Git
+
+### Installation
+
+#### Backend Setup
+
+1. Clone the repository
+   ```bash
+   git clone https://github.com/your-repo/rlf-linkage-analysis.git
+   cd rlf-linkage-analysis
+   ```
+
+2. Create and activate a Python virtual environment
+   ```bash
+   cd backend
+   python -m venv venv
+   
+   # On Windows
+   venv\Scripts\activate
+   
+   # On macOS/Linux
+   source venv/bin/activate
+   ```
+
+3. Install dependencies
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Start the backend server
+   ```bash
+   uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   
+   The API will be available at http://localhost:8000
+
+#### Frontend Setup
+
+1. Navigate to the frontend directory
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. Start the development server
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
+   
+   The application will be available at http://localhost:3000
+
+## Usage
+
+1. Open the application in a web browser
+2. Use drag-and-drop to adjust the position of pivot points
+3. Use the cylinder extension slider to simulate cylinder movement
+4. View real-time force calculations and 3D analysis
+
+## Development
+
+### Folder Structure
+
+```
+rlf-linkage-analysis/
+├── frontend/
+│   ├── public/
+│   │   └── index.html
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── LinkageVisualizer/
+│   │   │   │   ├── index.jsx           # 2D SVG visualization component
+│   │   │   │   └── styles.css
+│   │   │   ├── ForceAnalysis/
+│   │   │   │   ├── index.jsx           # 3D Plotly visualizations
+│   │   │   │   └── styles.css          # Component styles
+│   │   │   └── Controls/
+│   │   │       └── index.jsx           # UI controls for parameters
+│   │   ├── utils/
+│   │   │   ├── websocket.js            # WebSocket connection handling
+│   │   │   └── calculations.js         # Frontend calculations if needed
+│   │   ├── App.jsx                     # Main application component
+│   │   └── index.js                    # Entry point
+│   └── package.json
+│
+├── backend/
+│   ├── src/
+│   │   ├── analysis/
+│   │   │   ├── force_calculator.py     # Force calculation logic
+│   │   │   └── geometry.py             # Geometry-related calculations
+│   │   ├── api/
+│   │   │   └── websocket.py            # WebSocket handling
+│   │   └── main.py                     # FastAPI application entry
+│   └── requirements.txt
+│
+└── README.md
+```
+
+## Technical Implementation
+
+### Backend
+
+- **FastAPI**: High-performance web framework for API endpoints
+- **WebSockets**: For real-time communication with the frontend
+- **NumPy/SciPy**: For mathematical calculations and analysis
+- **Geometry Module**: Handles linkage position calculations
+- **Force Calculator**: Computes forces, mechanical advantage, and 3D surfaces
+
+### Frontend
+
+- **React**: UI library for component-based architecture
+- **SVG**: For 2D interactive visualization
+- **Plotly.js**: For 3D visualization of force analyses
+- **WebSocket Client**: For real-time communication with the backend
+
+## Future Enhancements
+
+- Multiple linkage type templates
+- Custom constraint definition
+- Analysis report generation
+- Component stress analysis
+- Motion path optimization
+- Export to CAD formats
+
+## License
+
+[MIT License](LICENSE)

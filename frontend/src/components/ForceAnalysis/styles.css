@@ -1,0 +1,134 @@
+/* frontend/src/components/ForceAnalysis/styles.css */
+.force-analysis-container {
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    margin-bottom: 20px;
+    height: 100%;
+  }
+  
+  .force-analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .force-analysis-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+  }
+  
+  .view-controls {
+    display: flex;
+    align-items: center;
+  }
+  
+  .view-controls label {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    margin-right: 8px;
+  }
+  
+  .view-controls select {
+    margin-left: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background-color: #f9f9f9;
+  }
+  
+  .plot-container {
+    flex-grow: 1;
+    min-height: 400px;
+    width: 100%;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    width: 100%;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    color: #666;
+    font-style: italic;
+  }
+  
+  .placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    width: 100%;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    color: #666;
+  }
+  
+  .placeholder p {
+    max-width: 300px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  
+  .force-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+  }
+  
+  .metric {
+    display: flex;
+    flex-direction: column;
+    background-color: #f5f9ff;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #2684ff;
+  }
+  
+  .metric-label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+  }
+  
+  .metric-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .force-metrics {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .force-analysis-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .view-controls {
+      margin-top: 8px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .force-metrics {
+      grid-template-columns: 1fr;
+    }
+  }

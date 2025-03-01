@@ -5,7 +5,7 @@
 
 Implementation of our mechanical linkage analysis tool with the following key components:
 
-1. **InSteractive 2D Visualization System**
+1. **Interactive 2D Visualization System**
    - Draggable pivot points with real-time coordinate display
    - Visual representation of the arm, cross-link, and air cylinder
    - Real-time geometry manipulation

@@ -1,133 +1,166 @@
 // frontend/src/App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import LinkageVisualizer from './components/LinkageVisualizer';
-import ForceAnalysis from './components/ForceAnalysis';
 import Controls from './components/Controls';
-import ForceDisplay from './components/ForceDisplay';
-import { calculateGeometryFromStroke, calculateBasicForces } from './utils/calculations';
+import ForceAnalysis from './components/ForceAnalysis';
+import websocketService from './utils/websocket';
+import './output.css';
 
-const App = () => {
-  // State for mode
-  const [mode, setMode] = useState('design');
-  
-  // State for pivot points
-  const [pivotPoints, setPivotPoints] = useState({
-    p1: { x: 100, y: 200 },
-    p2: { x: 300, y: 200 },
-    p3: { x: 500, y: 200 }
-  });
+// Default initial position for the linkage system
+const defaultGeometry = {
+  pivotBase: { x: 100, y: 200 },
+  pivotArm: { x: 200, y: 100 },
+  cylinderBase: { x: 100, y: 250 },
+  cylinderArm: { x: 200, y: 100 },
+  cylinderMinLength: 10, // Minimum length of the cylinder when fully retracted
+};
 
-  // State for simulation
-  const [stroke, setStroke] = useState(0);
-  const [maxStroke, setMaxStroke] = useState(100);
-  const [simulationGeometry, setSimulationGeometry] = useState(null);
-  const [forceAnalysis, setForceAnalysis] = useState(null);
+function App() {
+  // State for geometry points and calculation results
+  const [points, setPoints] = useState(defaultGeometry);
+  const [cylinderExtension, setCylinderExtension] = useState(0);
+  const [forceData, setForceData] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [calculating, setCalculating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Mock data generation (will be replaced with actual API calls)
-  const generateSurfaceData = () => {
-    const xOffsets = Array.from({ length: 40 }, (_, i) => -2 + (i * 2 / 40));
-    const yOffsets = Array.from({ length: 40 }, (_, i) => -2 + (i * 2 / 40));
-    const cylinderPositions = [0, 0.5, 1.0, 1.75];
-
-    const calculateForce = (x, y, stroke) => {
-      const distance = Math.sqrt(x * x + y * y);
-      return 265.05 * (1 - distance / 4) * (1 + stroke / 2);
-    };
-
-    return cylinderPositions.map(stroke => {
-      const zValues = [];
-      for (let y of yOffsets) {
-        const row = [];
-        for (let x of xOffsets) {
-          row.push(calculateForce(x, y, stroke));
-        }
-        zValues.push(row);
-      }
-      return {
-        stroke,
-        x: xOffsets,
-        y: yOffsets,
-        z: zValues
-      };
-    });
-  };
-
-  const [surfaceData, setSurfaceData] = useState(generateSurfaceData());
-
-  // Handler for mode change
-  const handleModeChange = (newMode) => {
-    console.log("Mode changed to:", newMode);
-    setMode(newMode);
-    if (newMode === 'simulation') {
-      // We'll use pivot points as the geometry for now
-      setSimulationGeometry(pivotPoints);
-      setStroke(0);
-      const forces = { cylinderForce: 1000, outputForce: 500, mechanicalAdvantage: 0.5 };
-      setForceAnalysis(forces);
-    }
-  };
-
-  // Handler for stroke change
-  const handleStrokeChange = (newStroke) => {
-    console.log("Stroke changed to:", newStroke);
-    setStroke(newStroke);
-    // In a real implementation, we would calculate new geometry here
+  // Connect to WebSocket server on component mount
+  useEffect(() => {
+    // Connect to the WebSocket server
+    websocketService.connect('ws://localhost:8000/ws');
     
-    // Mock force calculation
-    const forces = { 
-      cylinderForce: 1000 + newStroke * 10, 
-      outputForce: 500 + newStroke * 5, 
-      mechanicalAdvantage: 0.5 + newStroke * 0.01 
+    // Set up connection status listeners
+    const connectHandler = () => setConnectionStatus('connected');
+    const disconnectHandler = () => setConnectionStatus('disconnected');
+    
+    websocketService.on('connect', connectHandler);
+    websocketService.on('disconnect', disconnectHandler);
+    
+    // Set up message listener
+    const messageHandler = (data) => {
+      setCalculating(false);
+      
+      // Check for errors
+      if (data.error) {
+        setErrorMessage(data.message || 'An error occurred');
+        return;
+      }
+      
+      // Clear any previous errors
+      setErrorMessage('');
+      
+      // Update force data
+      if (data.forceAnalysis) {
+        setForceData(data.forceAnalysis);
+      }
+      
+      // Update points if they were changed by the backend
+      if (data.updatedPoints) {
+        setPoints(data.updatedPoints);
+      }
     };
-    setForceAnalysis(forces);
-  };
+    
+    const unsubscribe = websocketService.onMessage(messageHandler);
+    
+    // Clean up on unmount
+    return () => {
+      websocketService.close();
+      unsubscribe();
+    };
+  }, []);
 
-  // Handle pivot point changes
-  const handlePivotPointChange = (pointId, newPosition) => {
-    setPivotPoints(prev => ({
-      ...prev,
+  // Function to send data to the server for force calculation
+  const calculateForces = useCallback(() => {
+    if (connectionStatus !== 'connected') {
+      setErrorMessage('Not connected to the server. Please try again later.');
+      return;
+    }
+    
+    setCalculating(true);
+    
+    // Send current state to the server
+    websocketService.send({
+      points,
+      cylinderExtension,
+      simulationMode: true
+    });
+  }, [points, cylinderExtension, connectionStatus]);
+
+  // Recalculate forces when geometry or cylinder extension changes
+  useEffect(() => {
+    // Debounce the calculation to avoid overwhelming the server
+    const debounceTimeout = setTimeout(() => {
+      calculateForces();
+    }, 300);
+    
+    return () => clearTimeout(debounceTimeout);
+  }, [points, cylinderExtension, calculateForces]);
+
+  // Handle point dragging from the LinkageVisualizer
+  const handlePointDrag = (pointId, newPosition) => {
+    setPoints(prevPoints => ({
+      ...prevPoints,
       [pointId]: newPosition
     }));
   };
 
-  // Update analysis when points change
-  useEffect(() => {
-    // This will eventually make an API call to the backend
-    setSurfaceData(generateSurfaceData());
-  }, [pivotPoints]);
+  // Handle cylinder extension changes from the Controls component
+  const handleCylinderExtensionChange = (extension) => {
+    setCylinderExtension(extension);
+  };
+
+  // Handle reset to default geometry
+  const handleReset = () => {
+    setPoints(defaultGeometry);
+    setCylinderExtension(0);
+    setForceData(null);
+    setErrorMessage('');
+  };
 
   return (
-    <div className={`app ${mode === 'simulation' ? 'simulation-mode' : ''}`}>
+    <div className="app-container">
       <header className="app-header">
         <h1>RLF Linkage Analysis Tool</h1>
-        {/* Debug information */}
-        <div style={{background: 'yellow', padding: '5px', marginBottom: '10px'}}>
-          Current Mode: {mode}
+        <div className={`connection-status ${connectionStatus}`}>
+          {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
         </div>
       </header>
       
-      <div className="app-container">
-        <Controls 
-          currentMode={mode}
-          onModeChange={handleModeChange}
-          stroke={stroke}
-          maxStroke={maxStroke}
-          onStrokeChange={handleStrokeChange}
-          showCylinderControls={mode === 'simulation'}
-        />
+      {errorMessage && (
+        <div className="error-message">
+          <p>{errorMessage}</p>
+          <button onClick={() => setErrorMessage('')}>Dismiss</button>
+        </div>
+      )}
+      
+      <div className="main-content">
+        <div className="visualization-container">
+          <LinkageVisualizer 
+            points={points} 
+            onPointDrag={handlePointDrag} 
+            cylinderExtension={cylinderExtension}
+          />
+          
+          <Controls 
+            cylinderExtension={cylinderExtension}
+            onCylinderExtensionChange={handleCylinderExtensionChange}
+            onReset={handleReset}
+          />
+        </div>
         
-        <LinkageVisualizer 
-          pivotPoints={pivotPoints} 
-          onPivotPointChange={handlePivotPointChange} 
-          isInteractive={mode === 'design'}
-        />
-        
-        {mode === 'simulation' && forceAnalysis && (
-          <ForceDisplay forceAnalysis={forceAnalysis} />
-        )}
+        <div className="analysis-container">
+          <ForceAnalysis 
+            forceData={forceData} 
+            loading={calculating}
+          />
+        </div>
       </div>
+      
+      <footer className="app-footer">
+        <p>RLF Linkage Analysis Tool &copy; 2025</p>
+      </footer>
     </div>
   );
-};
+}
 
 export default App;
