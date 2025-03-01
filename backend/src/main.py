@@ -1,9 +1,9 @@
 # backend/src/main.py
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 import json
-import asyncio
-from typing import List, Dict, Any
+import traceback
+from typing import Dict, Any
 
 # Import analysis modules
 from src.analysis.force_calculations import calculate_forces
@@ -14,32 +14,11 @@ app = FastAPI(title="RLF Linkage Analysis Tool API")
 # Configure CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# WebSocket connection manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def send_personal_message(self, message: str, websocket: WebSocket):
-        await websocket.send_text(message)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
-
-manager = ConnectionManager()
 
 # Basic health check endpoint
 @app.get("/")
@@ -49,95 +28,86 @@ async def root():
 # WebSocket endpoint for real-time data exchange
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+    await websocket.accept()
     try:
         while True:
-            # Receive geometry data from frontend
+            # Simple receive-process-send loop
             data = await websocket.receive_text()
-            geometry_data = json.loads(data)
-            
-            # Process the data and calculate forces
-            results = process_linkage_data(geometry_data)
-            
-            # Send results back to the client
-            await manager.send_personal_message(json.dumps(results), websocket)
+            try:
+                geometry_data = json.loads(data)
+                results = process_linkage_data(geometry_data)
+                await websocket.send_text(json.dumps(results))
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                traceback.print_exc()
+                await websocket.send_text(json.dumps({
+                    "error": True,
+                    "message": str(e)
+                }))
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        print("Client disconnected")
 
-# REST API endpoint for one-time force calculations
+# REST API endpoint for HTTP fallback
 @app.post("/calculate")
-async def calculate(data: Dict[str, Any]):
+async def calculate(request: Request):
+    data = await request.json()
     results = process_linkage_data(data)
     return results
 
 # Process incoming geometry data and return force analysis
 def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
-    # Extract geometry parameters
-    points = data.get("points", {})
-    cylinder_extension = data.get("cylinderExtension", 0)
-    
-    # Calculate updated geometry if cylinder is moving
-    if "simulationMode" in data and data["simulationMode"]:
-        points = calculate_geometry(points, cylinder_extension)
-    
-    # Calculate forces based on the geometry
-    force_results = calculate_forces(points, cylinder_extension)
-    
-    # Return combined results
-    return {
-        "updatedPoints": points,
-        "forceAnalysis": force_results
-    }
-
-def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """Process incoming geometry data and return force analysis"""
-    # Debug log the received data
-    print(f"Received data: {json.dumps(data, indent=2)}")
-    
-    # Extract geometry parameters with error handling
-    points = data.get("points", {})
-    cylinder_extension = data.get("cylinderExtension", 0)
-    
-    # Debug log the extracted points
-    print(f"Extracted points: {json.dumps(points, indent=2)}")
-    
-    # Initialize results
-    force_results = {}
-    
-    # Calculate updated geometry if cylinder is moving
-    if "simulationMode" in data and data["simulationMode"]:
+    try:
+        # Extract geometry parameters with error handling
+        points = data.get("points", {})
+        cylinder_extension = data.get("cylinderExtension", 0)
+        
+        # Handle ping/pong messages
+        if "ping" in data and data["ping"] is True:
+            return {"pong": True}
+        
+        # Handle pong responses - just acknowledge
+        if "pong" in data and data["pong"] is True:
+            return {"received": True}
+        
+        # Calculate updated geometry if cylinder is moving
+        if "simulationMode" in data and data["simulationMode"]:
+            try:
+                points = calculate_geometry(points, cylinder_extension)
+            except Exception as e:
+                print(f"Error in calculate_geometry: {e}")
+                traceback.print_exc()
+                return {
+                    "error": True,
+                    "message": f"Geometry calculation error: {str(e)}"
+                }
+        
+        # Calculate forces based on the geometry
         try:
-            points = calculate_geometry(points, cylinder_extension)
+            force_results = calculate_forces(points, cylinder_extension)
         except Exception as e:
-            print(f"Error in calculate_geometry: {e}")
-            import traceback
+            print(f"Error in calculate_forces: {e}")
             traceback.print_exc()
-            # Return error message instead of raising
             return {
                 "error": True,
-                "message": f"Geometry calculation error: {str(e)}"
+                "message": f"Force calculation error: {str(e)}"
             }
-    
-    # Calculate forces based on the geometry
-    try:
-        force_results = calculate_forces(points, cylinder_extension)
+        
+        # Return combined results
+        return {
+            "updatedPoints": points,
+            "forceAnalysis": force_results
+        }
     except Exception as e:
-        print(f"Error in calculate_forces: {e}")
-        import traceback
+        # Catch-all for any other errors
+        print(f"Unexpected error in process_linkage_data: {e}")
         traceback.print_exc()
-        # Return error message
         return {
             "error": True,
-            "message": f"Force calculation error: {str(e)}"
+            "message": f"Server error: {str(e)}"
         }
-    
-    # Return combined results
-    return {
-        "updatedPoints": points,
-        "forceAnalysis": force_results
-    }
 
-# Run with: uvicorn main:app --reload
+# Run with: uvicorn src.main:app --reload
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)

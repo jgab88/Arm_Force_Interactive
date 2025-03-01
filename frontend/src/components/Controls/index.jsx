@@ -1,53 +1,66 @@
-// src/components/Controls/index.jsx
-import React from 'react';
-import './styles.css'; // Create this file if it doesn't exist
+// frontend/src/components/Controls/index.jsx
+import React, { memo } from 'react';
+import './styles.css';
 
-const Controls = ({ 
-  currentMode, 
-  onModeChange, 
-  stroke, 
-  maxStroke, 
-  onStrokeChange, 
-  showCylinderControls 
+const Controls = memo(({ 
+  cylinderExtension, 
+  onCylinderExtensionChange, 
+  onReset,
+  autoUpdate,
+  setAutoUpdate,
+  onCalculate,
+  calculating
 }) => {
-  console.log("Controls rendering, mode:", currentMode);
+  console.log('Controls rendering, mode:', undefined);
   
+  // Handle slider change
+  const handleSliderChange = (e) => {
+    const value = parseFloat(e.target.value);
+    onCylinderExtensionChange(value);
+  };
+
   return (
-    <div className="controls-panel">
-      <div className="mode-toggle">
-        <h3>Mode:</h3>
-        <div className="button-group">
-          <button 
-            className={`mode-btn ${currentMode === 'design' ? 'active' : ''}`}
-            onClick={() => onModeChange('design')}
-          >
-            Design
-          </button>
-          <button 
-            className={`mode-btn ${currentMode === 'simulation' ? 'active' : ''}`}
-            onClick={() => onModeChange('simulation')}
-          >
-            Simulation
-          </button>
-        </div>
+    <div className="controls-container">
+      <div className="control-group">
+        <label htmlFor="cylinder-extension">Cylinder Extension: {cylinderExtension.toFixed(2)} inches</label>
+        <input
+          id="cylinder-extension"
+          type="range"
+          min="0"
+          max="10"
+          step="0.1"
+          value={cylinderExtension}
+          onChange={handleSliderChange}
+          className="slider"
+        />
       </div>
-      
-      {showCylinderControls && (
-        <div className="cylinder-controls">
-          <h3>Cylinder Controls:</h3>
-          <label>Extension: {stroke.toFixed(2)} mm</label>
-          <input
-            type="range"
-            min="0"
-            max={maxStroke}
-            value={stroke}
-            onChange={(e) => onStrokeChange(Number(e.target.value))}
-            style={{ width: '100%' }}
+
+      <div className="control-actions">
+        <button onClick={onReset} className="reset-button">
+          Reset
+        </button>
+        
+        <label className="auto-update-toggle">
+          <input 
+            type="checkbox" 
+            checked={autoUpdate} 
+            onChange={() => setAutoUpdate(prev => !prev)}
           />
-        </div>
-      )}
+          Auto-Update
+        </label>
+        
+        {!autoUpdate && (
+          <button 
+            onClick={onCalculate} 
+            className="update-button" 
+            disabled={calculating}
+          >
+            {calculating ? 'Updating...' : 'Update Analysis'}
+          </button>
+        )}
+      </div>
     </div>
   );
-};
+});
 
 export default Controls;

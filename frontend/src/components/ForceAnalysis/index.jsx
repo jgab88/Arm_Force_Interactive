@@ -1,21 +1,30 @@
 // frontend/src/components/ForceAnalysis/index.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 import Plotly from 'plotly.js-dist';
 import './styles.css';
 
-const ForceAnalysis = ({ forceData, loading }) => {
+const ForceAnalysis = memo(({ forceData, loading }) => {
   const plotContainer = useRef(null);
   const plotInstance = useRef(null);
   const [viewType, setViewType] = useState('surface'); // 'surface', 'contour', 'heatmap'
+  const prevForceDataRef = useRef(null);
 
   // Effect to create or update the plot when data changes
   useEffect(() => {
-    if (!forceData || !forceData.surfaceData || loading) {
+    // Skip processing if data hasn't changed to prevent unnecessary renders
+    if (!forceData || loading || JSON.stringify(forceData) === JSON.stringify(prevForceDataRef.current)) {
       return;
     }
 
+    prevForceDataRef.current = forceData;
+
     // Extract data from forceData
     const { surfaceData } = forceData;
+    if (!surfaceData || !surfaceData.x || !surfaceData.y || !surfaceData.z) {
+      console.warn('Incomplete surface data:', surfaceData);
+      return;
+    }
+
     const { x, y, z, currentPosition } = surfaceData;
 
     // Create the appropriate plot based on view type
@@ -63,135 +72,158 @@ const ForceAnalysis = ({ forceData, loading }) => {
       colorscale: 'Blues'
     };
 
-    // Create different plot types
-    switch (type) {
-      case 'surface':
-        // 3D Surface plot
-        plotData = [
-          {
-            type: 'surface',
-            x: x,
-            y: y,
-            z: z,
-            colorscale: 'Blues',
-            showscale: true,
-            name: 'Force Surface'
-          },
-          // Add a marker for the current position
-          {
-            type: 'scatter3d',
-            x: [currentPosition.x],
-            y: [currentPosition.y],
-            z: [currentPosition.z],
-            mode: 'markers',
-            marker: {
-              size: 8,
-              color: 'red',
-            },
-            name: 'Current Position'
+    try {
+      // Create different plot types
+      switch (type) {
+        case 'surface':
+          // 3D Surface plot
+          plotData = [
+            {
+              type: 'surface',
+              x: x,
+              y: y,
+              z: z,
+              colorscale: 'Blues',
+              showscale: true,
+              name: 'Force Surface'
+            }
+          ];
+          
+          // Add a marker for the current position if available
+          if (currentPosition) {
+            plotData.push({
+              type: 'scatter3d',
+              x: [currentPosition.x],
+              y: [currentPosition.y],
+              z: [currentPosition.z],
+              mode: 'markers',
+              marker: {
+                size: 8,
+                color: 'red',
+              },
+              name: 'Current Position'
+            });
           }
-        ];
-        break;
+          break;
 
-      case 'contour':
-        // 2D Contour plot
-        plotData = [
-          {
-            type: 'contour',
-            x: x,
-            y: y,
-            z: z,
-            colorscale: 'Blues',
-            showscale: true,
-            name: 'Force Contours'
-          },
+        case 'contour':
+          // 2D Contour plot
+          plotData = [
+            {
+              type: 'contour',
+              x: x,
+              y: y,
+              z: z,
+              colorscale: 'Blues',
+              showscale: true,
+              name: 'Force Contours'
+            }
+          ];
+          
           // Add a marker for the current position
-          {
-            type: 'scatter',
-            x: [currentPosition.x],
-            y: [currentPosition.y],
-            mode: 'markers',
-            marker: {
-              size: 12,
-              color: 'red',
-              symbol: 'circle'
-            },
-            name: 'Current Position'
+          if (currentPosition) {
+            plotData.push({
+              type: 'scatter',
+              x: [currentPosition.x],
+              y: [currentPosition.y],
+              mode: 'markers',
+              marker: {
+                size: 12,
+                color: 'red',
+                symbol: 'circle'
+              },
+              name: 'Current Position'
+            });
           }
-        ];
-        
-        // Adjust layout for 2D view
-        layout.scene = undefined;
-        layout.xaxis = { title: 'Cylinder Extension (inches)' };
-        layout.yaxis = { title: 'Pressure (PSI)' };
-        break;
+          
+          // Adjust layout for 2D view
+          layout.scene = undefined;
+          layout.xaxis = { title: 'Cylinder Extension (inches)' };
+          layout.yaxis = { title: 'Pressure (PSI)' };
+          break;
 
-      case 'heatmap':
-        // Heatmap view
-        plotData = [
-          {
-            type: 'heatmap',
-            x: x,
-            y: y,
-            z: z,
-            colorscale: 'Blues',
-            showscale: true,
-            name: 'Force Heatmap'
-          },
+        case 'heatmap':
+          // Heatmap view
+          plotData = [
+            {
+              type: 'heatmap',
+              x: x,
+              y: y,
+              z: z,
+              colorscale: 'Blues',
+              showscale: true,
+              name: 'Force Heatmap'
+            }
+          ];
+          
           // Add a marker for the current position
-          {
-            type: 'scatter',
-            x: [currentPosition.x],
-            y: [currentPosition.y],
-            mode: 'markers',
-            marker: {
-              size: 12,
-              color: 'red',
-              symbol: 'circle',
-              line: {
-                color: 'white',
-                width: 2
-              }
-            },
-            name: 'Current Position'
+          if (currentPosition) {
+            plotData.push({
+              type: 'scatter',
+              x: [currentPosition.x],
+              y: [currentPosition.y],
+              mode: 'markers',
+              marker: {
+                size: 12,
+                color: 'red',
+                symbol: 'circle',
+                line: {
+                  color: 'white',
+                  width: 2
+                }
+              },
+              name: 'Current Position'
+            });
           }
-        ];
-        
-        // Adjust layout for heatmap
-        layout.scene = undefined;
-        layout.xaxis = { title: 'Cylinder Extension (inches)' };
-        layout.yaxis = { title: 'Pressure (PSI)' };
-        break;
-        
-      default:
-        // Default to surface plot
-        plotData = [
-          {
-            type: 'surface',
-            x: x,
-            y: y,
-            z: z,
-            colorscale: 'Blues',
-            showscale: true
-          }
-        ];
-    }
+          
+          // Adjust layout for heatmap
+          layout.scene = undefined;
+          layout.xaxis = { title: 'Cylinder Extension (inches)' };
+          layout.yaxis = { title: 'Pressure (PSI)' };
+          break;
+          
+        default:
+          // Default to surface plot
+          plotData = [
+            {
+              type: 'surface',
+              x: x,
+              y: y,
+              z: z,
+              colorscale: 'Blues',
+              showscale: true
+            }
+          ];
+      }
 
-    // Create or update the plot
-    if (!plotInstance.current) {
-      plotInstance.current = Plotly.newPlot(
-        plotContainer.current,
-        plotData,
-        layout,
-        { responsive: true }
-      );
-    } else {
-      Plotly.react(
-        plotContainer.current,
-        plotData,
-        layout,
-        { responsive: true }
-      );
+      // Create or update the plot
+      if (!plotInstance.current) {
+        plotInstance.current = Plotly.newPlot(
+          plotContainer.current,
+          plotData,
+          layout,
+          { 
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['sendDataToCloud', 'toggleHover'],
+            displaylogo: false
+          }
+        );
+      } else {
+        Plotly.react(
+          plotContainer.current,
+          plotData,
+          layout,
+          { 
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['sendDataToCloud', 'toggleHover'],
+            displaylogo: false
+          }
+        );
+      }
+    } catch (error) {
+      console.error('Error creating plot:', error);
     }
   };
 
@@ -252,6 +284,6 @@ const ForceAnalysis = ({ forceData, loading }) => {
       )}
     </div>
   );
-};
+});
 
 export default ForceAnalysis;

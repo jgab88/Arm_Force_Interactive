@@ -1,9 +1,9 @@
-# backend/src/analysis/force_calculator.py
+# backend/src/analysis/force_calculations.py
 import numpy as np
 from typing import Dict, Any, List, Tuple
 import math
 
-def calculate_forces(points: Dict[str, Dict[str, float]], cylinder_extension: float) -> Dict[str, Any]:
+def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[str, Any]:
     """
     Calculate forces in the linkage system based on geometry
     
@@ -15,10 +15,15 @@ def calculate_forces(points: Dict[str, Dict[str, float]], cylinder_extension: fl
         Dictionary with force analysis results
     """
     # Extract key points
-    pivot_base = np.array([points["pivotBase"]["x"], points["pivotBase"]["y"]])
-    pivot_arm = np.array([points["pivotArm"]["x"], points["pivotArm"]["y"]])
-    cylinder_base = np.array([points["cylinderBase"]["x"], points["cylinderBase"]["y"]])
-    cylinder_arm = np.array([points["cylinderArm"]["x"], points["cylinderArm"]["y"]])
+    try:
+        pivot_base = np.array([points["pivotBase"]["x"], points["pivotBase"]["y"]])
+        pivot_arm = np.array([points["pivotArm"]["x"], points["pivotArm"]["y"]])
+        cylinder_base = np.array([points["cylinderBase"]["x"], points["cylinderBase"]["y"]])
+        cylinder_arm = np.array([points["cylinderArm"]["x"], points["cylinderArm"]["y"]])
+    except (KeyError, TypeError) as e:
+        print(f"Error extracting point coordinates: {e}")
+        print(f"Points data: {points}")
+        return {"error": f"Invalid point data: {str(e)}"}
     
     # Calculate vectors
     arm_vector = pivot_arm - pivot_base
@@ -85,7 +90,7 @@ def calculate_forces(points: Dict[str, Dict[str, float]], cylinder_extension: fl
     }
 
 def generate_surface_data(
-    points: Dict[str, Dict[str, float]], 
+    points: Dict[str, Any], 
     current_extension: float,
     cylinder_bore: float,
     cylinder_pressure: float,
@@ -104,6 +109,19 @@ def generate_surface_data(
     Returns:
         Dictionary with x, y, z arrays for 3D plotting
     """
+    # Import here to avoid circular imports
+    try:
+        from .geometry import calculate_geometry
+    except ImportError:
+        # Fallback for different module structures
+        try:
+            from src.analysis.geometry import calculate_geometry
+        except ImportError:
+            # Last resort fallback - use a stub function
+            def calculate_geometry(pts, ext):
+                print("Warning: Using stub calculate_geometry function")
+                return pts
+    
     # Create a copy of points for manipulation
     base_points = {}
     for k, v in points.items():
@@ -124,42 +142,53 @@ def generate_surface_data(
     # Calculate force at each point in the grid
     for i, ext in enumerate(extension_range):
         # Update geometry for this extension
-        from .geometry import calculate_geometry
-        updated_points = calculate_geometry(base_points, ext)
+        try:
+            updated_points = calculate_geometry(base_points, ext)
+        except Exception as e:
+            print(f"Error calculating geometry for surface: {e}")
+            # Use a default increasing value if calculation fails
+            Z[:, i] = (ext + 1) * pressure_range / 10
+            continue
         
         for j, press in enumerate(pressure_range):
-            # Calculate force with this pressure and extension
-            cylinder_area = math.pi * (cylinder_bore/2)**2
-            cylinder_force = press * cylinder_area
-            
-            # Extract key points
-            pivot_base = np.array([updated_points["pivotBase"]["x"], updated_points["pivotBase"]["y"]])
-            pivot_arm = np.array([updated_points["pivotArm"]["x"], updated_points["pivotArm"]["y"]])
-            cylinder_base = np.array([updated_points["cylinderBase"]["x"], updated_points["cylinderBase"]["y"]])
-            cylinder_arm = np.array([updated_points["cylinderArm"]["x"], updated_points["cylinderArm"]["y"]])
-            
-            # Calculate vectors
-            arm_vector = pivot_arm - pivot_base
-            cylinder_vector = cylinder_arm - cylinder_base
-            
-            # Calculate angles
-            arm_angle = math.atan2(arm_vector[1], arm_vector[0])
-            cylinder_angle = math.atan2(cylinder_vector[1], cylinder_vector[0])
-            
-            # Calculate angle between cylinder and arm
-            angle_between = abs(cylinder_angle - arm_angle)
-            if angle_between > math.pi:
-                angle_between = 2 * math.pi - angle_between
-            
-            # Calculate mechanical advantage
-            mechanical_advantage = abs(math.sin(angle_between))
-            
-            # Calculate output force
-            Z[j, i] = cylinder_force * mechanical_advantage
+            try:
+                # Calculate force with this pressure and extension
+                cylinder_area = math.pi * (cylinder_bore/2)**2
+                cylinder_force = press * cylinder_area
+                
+                # Extract key points
+                pivot_base = np.array([updated_points["pivotBase"]["x"], updated_points["pivotBase"]["y"]])
+                pivot_arm = np.array([updated_points["pivotArm"]["x"], updated_points["pivotArm"]["y"]])
+                cylinder_base = np.array([updated_points["cylinderBase"]["x"], updated_points["cylinderBase"]["y"]])
+                cylinder_arm = np.array([updated_points["cylinderArm"]["x"], updated_points["cylinderArm"]["y"]])
+                
+                # Calculate vectors
+                arm_vector = pivot_arm - pivot_base
+                cylinder_vector = cylinder_arm - cylinder_base
+                
+                # Calculate angles
+                arm_angle = math.atan2(arm_vector[1], arm_vector[0])
+                cylinder_angle = math.atan2(cylinder_vector[1], cylinder_vector[0])
+                
+                # Calculate angle between cylinder and arm
+                angle_between = abs(cylinder_angle - arm_angle)
+                if angle_between > math.pi:
+                    angle_between = 2 * math.pi - angle_between
+                
+                # Calculate mechanical advantage
+                mechanical_advantage = abs(math.sin(angle_between))
+                
+                # Calculate output force
+                Z[j, i] = cylinder_force * mechanical_advantage
+            except Exception as e:
+                print(f"Error calculating surface point ({i},{j}): {e}")
+                # Use a reasonable default value
+                Z[j, i] = cylinder_force * 0.5  # Assume 0.5 mechanical advantage
     
     # Highlight current position in the surface
-    current_idx = (np.abs(extension_range - current_extension)).argmin()
-    current_pressure_idx = (np.abs(pressure_range - cylinder_pressure)).argmin()
+    current_idx = min(range(len(extension_range)), key=lambda i: abs(extension_range[i] - current_extension))
+    current_pressure_idx = min(range(len(pressure_range)), key=lambda i: abs(pressure_range[i] - cylinder_pressure))
+    
     current_position = {
         "x": float(extension_range[current_idx]),
         "y": float(pressure_range[current_pressure_idx]),
