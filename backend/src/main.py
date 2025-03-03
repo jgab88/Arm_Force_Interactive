@@ -61,6 +61,12 @@ def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Extract geometry parameters with error handling
         points = data.get("points", {})
         cylinder_extension = data.get("cylinderExtension", 0)
+        generate_graph = data.get("generateGraph", False)
+        
+        # Store original points if they exist (for UI consistency)
+        original_points = None
+        if "originalPoints" in points:
+            original_points = points["originalPoints"]
         
         # Handle ping/pong messages
         if "ping" in data and data["ping"] is True:
@@ -73,7 +79,13 @@ def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Calculate updated geometry if cylinder is moving
         if "simulationMode" in data and data["simulationMode"]:
             try:
-                points = calculate_geometry(points, cylinder_extension)
+                updated_points = calculate_geometry(points, cylinder_extension)
+                
+                # Preserve original points in the result
+                if original_points:
+                    updated_points["originalPoints"] = original_points
+                
+                points = updated_points
             except Exception as e:
                 print(f"Error in calculate_geometry: {e}")
                 traceback.print_exc()
@@ -84,7 +96,17 @@ def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
         
         # Calculate forces based on the geometry
         try:
-            force_results = calculate_forces(points, cylinder_extension)
+            # If generating graph, use more sample points for better resolution
+            samples = 20 if generate_graph else 10
+            force_results = calculate_forces(points, cylinder_extension, samples=samples)
+            
+            # Check for errors in force calculation
+            if isinstance(force_results, dict) and "error" in force_results:
+                return {
+                    "error": True, 
+                    "message": force_results["error"]
+                }
+                
         except Exception as e:
             print(f"Error in calculate_forces: {e}")
             traceback.print_exc()

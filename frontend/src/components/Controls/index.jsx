@@ -9,7 +9,9 @@ const Controls = memo(({
   autoUpdate,
   setAutoUpdate,
   onCalculate,
-  calculating
+  onGenerateGraph,
+  calculating,
+  generatingGraph
 }) => {
   console.log('Controls rendering, mode:', undefined);
   
@@ -58,6 +60,14 @@ const Controls = memo(({
             {calculating ? 'Updating...' : 'Update Analysis'}
           </button>
         )}
+        
+        <button 
+          onClick={onGenerateGraph} 
+          className="graph-button" 
+          disabled={generatingGraph}
+        >
+          {generatingGraph ? 'Generating...' : 'Generate Graph'}
+        </button>
       </div>
     </div>
   );

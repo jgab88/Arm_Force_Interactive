@@ -3,19 +3,28 @@ import numpy as np
 from typing import Dict, Any, List, Tuple
 import math
 
-def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[str, Any]:
+def calculate_forces(points: Dict[str, Any], cylinder_extension: float, samples: int = 10) -> Dict[str, Any]:
     """
     Calculate forces in the linkage system based on geometry
     
     Args:
         points: Dictionary of points with x,y coordinates
         cylinder_extension: Current extension of the cylinder in inches
+        samples: Number of samples to generate in surface data (higher for graph generation)
         
     Returns:
         Dictionary with force analysis results
     """
     # Extract key points
     try:
+        # Check for required points
+        required_keys = ["pivotBase", "pivotArm", "cylinderBase", "cylinderArm"]
+        for key in required_keys:
+            if key not in points:
+                print(f"Missing required point: {key}")
+                print(f"Available points: {list(points.keys())}")
+                return {"error": f"Missing required point: {key}"}
+                
         pivot_base = np.array([points["pivotBase"]["x"], points["pivotBase"]["y"]])
         pivot_arm = np.array([points["pivotArm"]["x"], points["pivotArm"]["y"]])
         cylinder_base = np.array([points["cylinderBase"]["x"], points["cylinderBase"]["y"]])
@@ -67,15 +76,17 @@ def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[
     torque = output_force * arm_length
     
     # Generate 3D surface data for visualization (sampled points)
+    # Use higher resolution for explicit graph generation requests
     surface_data = generate_surface_data(
         points, 
         cylinder_extension,
         cylinder_bore,
-        cylinder_pressure
+        cylinder_pressure,
+        samples=samples
     )
     
     # Return comprehensive analysis
-    return {
+    result = {
         "cylinderForce": round(cylinder_force, 2),
         "outputForce": round(output_force, 2),
         "mechanicalAdvantage": round(mechanical_advantage, 4),
@@ -86,8 +97,16 @@ def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[
             "x": round(arm_force_x, 2),
             "y": round(arm_force_y, 2)
         },
+        "armLength": round(arm_length, 2),
+        "cylinderLength": round(cylinder_length, 2),
         "surfaceData": surface_data
     }
+    
+    print(f"Force calculation results: {result['cylinderForce']} lbs cylinder force, "
+          f"{result['outputForce']} lbs output force, "
+          f"{result['mechanicalAdvantage']} mechanical advantage")
+    
+    return result
 
 def generate_surface_data(
     points: Dict[str, Any], 

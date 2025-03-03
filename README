@@ -1,30 +1,32 @@
-# RLF Linkage Analysis Tool
-
-An interactive visualization and analysis tool for mechanical linkage systems, specifically focusing on pneumatic cylinder assemblies with multi-point linkages. The tool combines real-time 2D manipulation with instant 3D force analysis.
-
-## Project Structure
-
+Project Structure
 The application follows a client-server architecture:
 
-- **Frontend**: React.js application for interactive visualization and UI
-- **Backend**: Python FastAPI server for complex calculations and analysis
+   *Frontend: React.js application for interactive visualization and UI
+   *Backend: Python FastAPI server for complex calculations and analysis
 
-## Features
+Features
 
-- Interactive 2D visualization of mechanical linkage systems
-- Real-time manipulation of pivot points and geometry
-- Dynamic force calculation based on cylinder position
-- 3D visualization of force-position relationships
-- Mechanical advantage and torque analysis
-- WebSocket communication for real-time updates
+   *Interactive 2D visualization of mechanical linkage systems
+   *Real-time manipulation of pivot points and geometry
+   *Dynamic force calculation based on cylinder position
+   *3D visualization of force-position relationships
+   *Mechanical advantage and torque analysis
+   *On-demand graph generation for detailed analysis
+   *Optional WebSocket communication for real-time updates
 
-## Getting Started
+Recent Updates
 
-### Prerequisites
+   *Added "Generate Graph" button for on-demand high-resolution 3D surface plot generation
+   *Improved performance by reducing WebSocket traffic
+   *Added toggle for auto-update vs. manual calculation
+   *Enhanced error handling and user feedback
 
-- Node.js 18+ and npm/yarn for the frontend
-- Python 3.9+ for the backend
-- Git
+Getting Started
+Prerequisites
+
+   *Node.js 18+ and npm/yarn for the frontend
+   *Python 3.9+ for the backend
+   *Git
 
 ### Installation
 
@@ -146,14 +148,31 @@ rlf-linkage-analysis/
 - **Plotly.js**: For 3D visualization of force analyses
 - **WebSocket Client**: For real-time communication with the backend
 
-## Future Enhancements
+Usage
 
-- Multiple linkage type templates
-- Custom constraint definition
-- Analysis report generation
-- Component stress analysis
-- Motion path optimization
-- Export to CAD formats
+   1.Open the application in a web browser
+   2.Use drag-and-drop to adjust the position of pivot points
+   3.Use the cylinder extension slider to simulate cylinder movement
+   4.Toggle auto-update on/off as needed for performance
+   5.Click "Generate Graph" to create high-resolution 3D analysis
+   6.View force calculations and analysis results in real-time
+
+Development Notes
+Graph Generation
+The application now uses an on-demand approach for generating detailed 3D surface plots:
+
+   1.Basic force calculations run automatically when geometry changes (if auto-update is enabled)
+   2.Detailed graph generation with higher sample resolution is triggered manually via the "Generate Graph" button
+   3.This approach prevents WebSocket disconnects when handling larger data sets
+   4.The backend automatically increases the sample resolution when explicit graph generation is requested
+
+Connection Modes
+The application supports two modes of backend communication:
+
+   1. HTTP Mode (default): Uses traditional HTTP requests for more stable connections
+   2. WebSocket Mode: Enables real-time updates for more interactive analysis (can be toggled in the UI)
+
+For best performance with large models, use HTTP mode with auto-update disabled, making manual updates as needed.
 
 ## License
 
