@@ -8,6 +8,22 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
   const plotInstance = useRef(null);
   const [viewType, setViewType] = useState('surface'); // 'surface', 'contour', 'heatmap'
   const prevForceDataRef = useRef(null);
+  
+  useEffect(() => {
+    console.log("ForceAnalysis component received forceData:", forceData);
+    console.log("Loading state:", loading);
+    
+    // Check if we have valid surface data
+    if (forceData && forceData.surfaceData) {
+      console.log("Surface data available:", 
+        forceData.surfaceData.x ? `X length: ${forceData.surfaceData.x.length}` : "No X data",
+        forceData.surfaceData.y ? `Y length: ${forceData.surfaceData.y.length}` : "No Y data",
+        forceData.surfaceData.z ? `Z dims: ${forceData.surfaceData.z.length}x${forceData.surfaceData.z[0]?.length}` : "No Z data"
+      );
+    } else {
+      console.log("No surface data available");
+    }
+  }, [forceData, loading]);
 
   // Effect to create or update the plot when data changes
   useEffect(() => {

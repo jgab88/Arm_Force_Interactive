@@ -1,0 +1,66 @@
+/* frontend/src/components/LinkageVisualizer/style.css */
+.linkage-visualizer {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .linkage-visualizer h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 18px;
+    color: #333;
+  }
+  
+  .linkage-svg {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+  }
+  
+  .linkage-info {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  
+  .linkage-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #555;
+  }
+  
+  /* Add animation for the cylinder when it's moving */
+  .cylinder-rod.animating {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Point styling */
+  .pivot-point {
+    fill: #f44336;
+    stroke: #ffffff;
+    stroke-width: 2;
+    cursor: move;
+  }
+  
+  .cylinder-point {
+    fill: #2196f3;
+    stroke: #ffffff;
+    stroke-width: 2;
+    cursor: move;
+  }
+  
+  .linkage-point {
+    fill: #ff9800;
+    stroke: #ffffff;
+    stroke-width: 2;
+    cursor: move;
+  }

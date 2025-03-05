@@ -13,18 +13,31 @@ const Controls = memo(({
   calculating,
   generatingGraph
 }) => {
-  console.log('Controls rendering, mode:', undefined);
+  console.log('Controls rendering, cylinderExtension:', cylinderExtension);
   
   // Handle slider change
   const handleSliderChange = (e) => {
     const value = parseFloat(e.target.value);
+    console.log('Slider changed to:', value);
     onCylinderExtensionChange(value);
+  };
+
+  // Handle slider change end - when user releases the slider
+  const handleSliderChangeEnd = (e) => {
+    const value = parseFloat(e.target.value);
+    console.log('Slider change ended at:', value);
+    // If auto-update is off, manually trigger calculation when slider is released
+    if (!autoUpdate) {
+      setTimeout(() => onCalculate(), 100);
+    }
   };
 
   return (
     <div className="controls-container">
       <div className="control-group">
-        <label htmlFor="cylinder-extension">Cylinder Extension: {cylinderExtension.toFixed(2)} inches</label>
+        <label htmlFor="cylinder-extension">
+          Cylinder Extension: {cylinderExtension.toFixed(2)} inches
+        </label>
         <input
           id="cylinder-extension"
           type="range"
@@ -33,8 +46,15 @@ const Controls = memo(({
           step="0.1"
           value={cylinderExtension}
           onChange={handleSliderChange}
+          onMouseUp={handleSliderChangeEnd}
+          onTouchEnd={handleSliderChangeEnd}
           className="slider"
         />
+        <div className="slider-markers">
+          <span>0</span>
+          <span>5</span>
+          <span>10</span>
+        </div>
       </div>
 
       <div className="control-actions">

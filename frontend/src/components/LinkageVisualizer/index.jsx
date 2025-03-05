@@ -1,335 +1,247 @@
-import React, { useState, useRef } from 'react';
+// frontend/src/components/LinkageVisualizer/index.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import './style.css';
 
-const SCALE_FACTOR = 40;
-const VIEWPORT_WIDTH = 1000;
-const VIEWPORT_HEIGHT = 800;
+const LinkageVisualizer = ({ points, onPointDrag, cylinderExtension }) => {
+  // State management
+  const [draggingPoint, setDraggingPoint] = useState(null);
+  const [showCoords, setShowCoords] = useState(false);
+  
+  // Ref for the SVG element
+  const svgRef = useRef(null);
+  
+  // SVG Constants
+  const SVG_WIDTH = 600;
+  const SVG_HEIGHT = 400;
+  const SCALE = 1.5;
+  const CENTER_X = SVG_WIDTH / 2;
+  const CENTER_Y = SVG_HEIGHT / 2;
+  
+  // Coordinate conversion functions
+  const toSVGX = (x) => CENTER_X + x * SCALE;
+  const toSVGY = (y) => CENTER_Y - y * SCALE;
+  
+  const toWorldX = (svgX) => (svgX - CENTER_X) / SCALE;
+  const toWorldY = (svgY) => (CENTER_Y - svgY) / SCALE;
 
-// Default positions
-const DEFAULT_POSITIONS = {
-  point1: { x: 0, y: 8 },
-  point2: { x: -6.279, y: 8 },
-  point3: { x: -2, y: 4.795 },
-  pointA: { x: 0, y: 9 },
-  pointB: { x: -6.279, y: 9 },
-  pointC: { x: -10, y: 9 },
-  pointD: { x: -13.34, y: 5.3 },
-  pointE: { x: -14.6, y: 6.65 }
-};
-
-const LinkageVisualizer = () => {
-  // State for points and history
-  const [points, setPoints] = useState(DEFAULT_POSITIONS);
-  const [history, setHistory] = useState([DEFAULT_POSITIONS]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [showCoordinates, setShowCoordinates] = useState(false);
+  // Get only the valid draggable points (with x,y coordinates)
+  const getPointsToRender = () => {
+    const result = {};
+    for (const key in points) {
+      if (
+        points[key] && 
+        typeof points[key] === 'object' &&
+        'x' in points[key] && 
+        'y' in points[key] &&
+        typeof points[key].x === 'number' &&
+        typeof points[key].y === 'number'
+      ) {
+        result[key] = points[key];
+      }
+    }
+    return result;
+  };
   
-  // Convert coordinates with adjusted viewport center
-  const VIEWPORT_OFFSET_X = VIEWPORT_WIDTH * 0.65; // Adjust these values to move the viewport
-  const VIEWPORT_OFFSET_Y = VIEWPORT_HEIGHT * 0.6;
+  const renderablePoints = getPointsToRender();
   
-  const toSVGX = (inches) => (inches * SCALE_FACTOR) + VIEWPORT_OFFSET_X;
-  const toSVGY = (inches) => VIEWPORT_OFFSET_Y - (inches * SCALE_FACTOR);
+  // Convert points to SVG coordinates
+  const getSvgPoints = () => {
+    const result = {};
+    for (const key in renderablePoints) {
+      result[key] = {
+        x: toSVGX(renderablePoints[key].x),
+        y: toSVGY(renderablePoints[key].y)
+      };
+    }
+    return result;
+  };
   
-  // Point dragging handler
-  const createDragHandler = (pointId) => (e) => {
+  const svgPoints = getSvgPoints();
+  
+  // Event handlers for dragging
+  const handleMouseDown = (e, pointId) => {
     e.preventDefault();
-    const svg = e.currentTarget.closest('svg');
-    const svgRect = svg.getBoundingClientRect();
+    console.log(`Mouse down on point: ${pointId}`);
+    setDraggingPoint(pointId);
+    setShowCoords(true);
     
-    const initialX = e.clientX;
-    const initialY = e.clientY;
-    const initialPoint = points[pointId];
-    setShowCoordinates(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+  
+  const handleMouseMove = (e) => {
+    if (!draggingPoint || !svgRef.current) return;
     
-    function handleMove(moveEvent) {
-      const dx = (moveEvent.clientX - initialX) / SCALE_FACTOR;
-      const dy = -(moveEvent.clientY - initialY) / SCALE_FACTOR;
-      
-      const newPoints = {
-        ...points,
-        [pointId]: {
-          x: initialPoint.x + dx,
-          y: initialPoint.y + dy
-        }
-      };
-      setPoints(newPoints);
-    }
-
-    function handleUp() {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
-      setShowCoordinates(false);
-      
-      // Add to history
-      setHistory(prev => [...prev.slice(0, historyIndex + 1), points]);
-      setHistoryIndex(prev => prev + 1);
-    }
-
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    const svgRect = svgRef.current.getBoundingClientRect();
+    
+    // Calculate position relative to SVG
+    const svgX = e.clientX - svgRect.left;
+    const svgY = e.clientY - svgRect.top;
+    
+    // Convert to world coordinates
+    const worldX = toWorldX(svgX);
+    const worldY = toWorldY(svgY);
+    
+    console.log(`Dragging ${draggingPoint} to:`, { x: worldX, y: worldY });
+    
+    // Update the point position through the callback
+    onPointDrag(draggingPoint, { x: worldX, y: worldY });
   };
-
-  // Convert all points to SVG coordinates
-  const svgPoints = Object.entries(points).reduce((acc, [key, point]) => ({
-    ...acc,
-    [key]: {
-      x: toSVGX(point.x),
-      y: toSVGY(point.y)
-    }
-  }), {});
-
-  // Undo/Redo handlers
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(prev => prev - 1);
-      setPoints(history[historyIndex - 1]);
-    }
+  
+  const handleMouseUp = () => {
+    console.log(`Stopped dragging: ${draggingPoint}`);
+    setDraggingPoint(null);
+    setShowCoords(false);
+    
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   };
-
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(prev => prev + 1);
-      setPoints(history[historyIndex + 1]);
-    }
-  };
-
-  // Save/Load handlers
-  const handleSave = () => {
-    const config = {
-      points: points,
-      timestamp: new Date().toISOString()
+  
+  // Cleanup event listeners on unmount
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-    const blob = new Blob([JSON.stringify(config)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `linkage-config-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-  };
-
-  const handleLoad = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const config = JSON.parse(e.target.result);
-          setPoints(config.points);
-          setHistory(prev => [...prev, config.points]);
-          setHistoryIndex(prev => prev + 1);
-        } catch (error) {
-          console.error('Error loading configuration:', error);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
+  }, []);
+  
   return (
-    <div className="flex flex-col gap-4">
-      {/* Control Panel */}
-      <div className="flex gap-2 p-2 bg-white rounded-lg shadow">
-        <button 
-          onClick={() => {
-            setPoints(DEFAULT_POSITIONS);
-            setHistory([DEFAULT_POSITIONS]);
-            setHistoryIndex(0);
-          }}
-          className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300"
-        >
-          Reset
-        </button>
-        <button 
-          onClick={handleUndo}
-          disabled={historyIndex === 0}
-          className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-        >
-          Undo
-        </button>
-        <button 
-          onClick={handleRedo}
-          disabled={historyIndex === history.length - 1}
-          className="px-3 py-1 text-sm bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
-        >
-          Redo
-        </button>
-        <button 
-          onClick={handleSave}
-          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Save
-        </button>
-        <label className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer">
-          Load
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleLoad}
-            className="hidden"
-          />
-        </label>
-      </div>
-
-      {/* Main SVG */}
-      <div className="border rounded-lg p-4 bg-white">
-        <h2 className="text-lg font-semibold mb-4">Linkage System - Design Mode</h2>
-        <svg 
-          className="w-full h-96 border" 
-          viewBox={`0 0 ${VIEWPORT_WIDTH} ${VIEWPORT_HEIGHT}`}
-          style={{ backgroundColor: '#f8f9fa' }}
-        >
-          {/* Grid and axes */}
-          <g opacity="0.1">
-            {Array.from({length: 41}, (_, i) => (
-              <React.Fragment key={`grid-${i}`}>
-                <line 
-                  x1={toSVGX(-20)} y1={toSVGY(i-20)} 
-                  x2={toSVGX(20)} y2={toSVGY(i-20)} 
-                  stroke="gray" strokeWidth="1"
-                />
-                <line 
-                  x1={toSVGX(i-20)} y1={toSVGY(-20)} 
-                  x2={toSVGX(i-20)} y2={toSVGY(20)} 
-                  stroke="gray" strokeWidth="1"
-                />
-              </React.Fragment>
-            ))}
-          </g>
-
-          {/* Main arm structure */}
-          <path
-            d={`M ${svgPoints.pointA.x} ${svgPoints.pointA.y}
-                L ${svgPoints.pointB.x} ${svgPoints.pointB.y}
-                L ${svgPoints.pointC.x} ${svgPoints.pointC.y}
-                L ${svgPoints.pointD.x} ${svgPoints.pointD.y}
-                L ${svgPoints.pointE.x} ${svgPoints.pointE.y}`}
-            stroke="black"
-            strokeWidth="8"
-            fill="none"
-          />
-          
-          {/* Vertical connections */}
+    <div className="linkage-visualizer-container" style={{ 
+      backgroundColor: '#ffffff', 
+      borderRadius: '8px', 
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)', 
+      padding: '16px', 
+      marginBottom: '20px' 
+    }}>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#333' }}>
+        Linkage Mechanism
+      </h3>
+      
+      <svg 
+        ref={svgRef}
+        className="linkage-svg" 
+        width="100%" 
+        height={SVG_HEIGHT}
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        style={{ 
+          border: '1px solid #ddd', 
+          borderRadius: '4px', 
+          maxWidth: '100%',
+          backgroundColor: '#f9f9f9'
+        }}
+      >
+        {/* Grid */}
+        <g opacity="0.2">
+          {Array.from({ length: 21 }).map((_, i) => (
+            <React.Fragment key={`grid-${i}`}>
+              <line 
+                x1={0} 
+                y1={toSVGY((i - 10) * 20)} 
+                x2={SVG_WIDTH} 
+                y2={toSVGY((i - 10) * 20)} 
+                stroke="#ccc" 
+                strokeWidth="1" 
+              />
+              <line 
+                x1={toSVGX((i - 10) * 20)} 
+                y1={0} 
+                x2={toSVGX((i - 10) * 20)} 
+                y2={SVG_HEIGHT} 
+                stroke="#ccc" 
+                strokeWidth="1" 
+              />
+            </React.Fragment>
+          ))}
+        </g>
+        
+        {/* Base connections */}
+        {svgPoints.pivotBase && svgPoints.cylinderBase && (
           <line
-            x1={svgPoints.point1.x} y1={svgPoints.point1.y}
-            x2={svgPoints.pointA.x} y2={svgPoints.pointA.y}
-            stroke="black" strokeWidth="8"
+            x1={svgPoints.pivotBase.x}
+            y1={svgPoints.pivotBase.y}
+            x2={svgPoints.cylinderBase.x}
+            y2={svgPoints.cylinderBase.y}
+            stroke="#666"
+            strokeWidth="2"
           />
+        )}
+        
+        {/* Arm */}
+        {svgPoints.pivotBase && svgPoints.pivotArm && (
           <line
-            x1={svgPoints.point2.x} y1={svgPoints.point2.y}
-            x2={svgPoints.pointB.x} y2={svgPoints.pointB.y}
-            stroke="black" strokeWidth="8"
+            x1={svgPoints.pivotBase.x}
+            y1={svgPoints.pivotBase.y}
+            x2={svgPoints.pivotArm.x}
+            y2={svgPoints.pivotArm.y}
+            stroke="#333"
+            strokeWidth="4"
           />
-          
-          {/* Air Cylinder */}
-          <g>
-
-
-            {/* Cylinder body */}
-            <rect
-              x={toSVGX(-0.5)}
-              y={toSVGY(2)}
-              width={SCALE_FACTOR * 1}
-              height={SCALE_FACTOR * 4}
-              fill="#D3D3D3"
-              stroke="gray"
-              strokeWidth="1"
+        )}
+        
+        {/* Cylinder */}
+        {svgPoints.cylinderBase && svgPoints.cylinderArm && (
+          <line
+            x1={svgPoints.cylinderBase.x}
+            y1={svgPoints.cylinderBase.y}
+            x2={svgPoints.cylinderArm.x}
+            y2={svgPoints.cylinderArm.y}
+            stroke="#0066cc"
+            strokeWidth="6"
+            style={{ transition: cylinderExtension > 0 ? 'all 0.3s ease-in-out' : 'none' }}
+          />
+        )}
+        
+        {/* Points */}
+        {Object.entries(renderablePoints).map(([id, point]) => (
+          <g key={id}>
+            <circle
+              cx={svgPoints[id].x}
+              cy={svgPoints[id].y}
+              r="8"
+              fill={id.includes('pivot') ? "#f44336" : id.includes('cylinder') ? "#2196f3" : "#ff9800"}
+              stroke="#fff"
+              strokeWidth="2"
+              cursor="move"
+              onMouseDown={(e) => handleMouseDown(e, id)}
             />
             
-            {/* Cylinder mount */}
-            <rect
-              x={toSVGX(-0.-.75)}
-              y={toSVGY(0)}
-              width={SCALE_FACTOR * 1.5}
-              height={SCALE_FACTOR * 0.5}
-              fill="#A9A9A9"
-              stroke="gray"
-              strokeWidth="1"
-            />
-          </g>
-
-                      {/* Piston rod (drawn first so it's behind) */}
-                      <rect
-              x={toSVGX(-0.125)}
-              y={toSVGY(4)}
-              width={SCALE_FACTOR * 0.25}
-              height={SCALE_FACTOR * 4}
-              fill="#808080"
-              stroke="gray"
-              strokeWidth="1"
-            />
-
-          {/* Cross link */}
-          <line
-            x1={svgPoints.point2.x} y1={svgPoints.point2.y}
-            x2={svgPoints.point3.x} y2={svgPoints.point3.y}
-            stroke="blue" strokeWidth="3"
-          />
-
-          {/* Numbered points (pivots) */}
-          {['point1', 'point2', 'point3'].map((id, index) => (
-            <g key={id}>
-              <circle
-                cx={svgPoints[id].x}
-                cy={svgPoints[id].y}
-                r="8"
-                fill="red"
-                cursor="move"
-                onMouseDown={createDragHandler(id)}
-              />
+            <text
+              x={svgPoints[id].x + 15}
+              y={svgPoints[id].y + 5}
+              fill="#333"
+              fontSize="12"
+            >
+              {id}
+            </text>
+            
+            {showCoords && draggingPoint === id && (
               <text
                 x={svgPoints[id].x + 15}
-                y={svgPoints[id].y - 10}
-                fill="red"
+                y={svgPoints[id].y - 15}
+                fill="#333"
+                fontSize="10"
               >
-                {index + 1}
+                ({point.x.toFixed(1)}, {point.y.toFixed(1)})
               </text>
-              {showCoordinates && (
-                <text
-                  x={svgPoints[id].x + 15}
-                  y={svgPoints[id].y + 20}
-                  fill="black"
-                  fontSize="12"
-                >
-                  ({points[id].x.toFixed(2)}, {points[id].y.toFixed(2)})
-                </text>
-              )}
-            </g>
-          ))}
-
-          {/* Lettered points */}
-          {['A', 'B', 'C', 'D', 'E'].map((letter) => {
-            const id = `point${letter}`;
-            return (
-              <g key={letter}>
-                <circle
-                  cx={svgPoints[id].x}
-                  cy={svgPoints[id].y}
-                  r="6"
-                  fill="purple"
-                  cursor="move"
-                  onMouseDown={createDragHandler(id)}
-                />
-                <text
-                  x={svgPoints[id].x + 15}
-                  y={svgPoints[id].y - 10}
-                  fill="purple"
-                >
-                  {letter}
-                </text>
-                {showCoordinates && (
-                  <text
-                    x={svgPoints[id].x + 15}
-                    y={svgPoints[id].y + 20}
-                    fill="black"
-                    fontSize="12"
-                  >
-                    ({points[id].x.toFixed(2)}, {points[id].y.toFixed(2)})
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
+            )}
+          </g>
+        ))}
+      </svg>
+      
+      <div style={{ 
+        marginTop: '16px', 
+        paddingTop: '12px', 
+        borderTop: '1px solid #eee',
+        display: 'flex',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap'
+      }}>
+        <p style={{ margin: '4px 0', fontSize: '14px', color: '#555' }}>
+          Cylinder Extension: {cylinderExtension.toFixed(2)} inches
+        </p>
+        <p style={{ margin: '4px 0', fontSize: '14px', color: '#555' }}>
+          Drag points to adjust linkage geometry
+        </p>
       </div>
     </div>
   );
