@@ -6,23 +6,15 @@ import math
 def calculate_geometry(points: Dict[str, Any], cylinder_extension: float) -> Dict[str, Any]:
     """
     Calculate updated geometry based on cylinder extension
-    
-    Args:
-        points: Dictionary of points with x,y coordinates
-        cylinder_extension: Target extension of the cylinder in inches
-        
-    Returns:
-        Updated dictionary of points with new positions
     """
+    print(f"calculate_geometry called with extension: {cylinder_extension}")
+    
     # Create a deep copy of the points to avoid modifying the original
     updated_points = {}
-    
-    # Handle different types of values in the points dictionary
     for k, v in points.items():
         if isinstance(v, dict):
             updated_points[k] = {sk: sv for sk, sv in v.items()}
         else:
-            # If it's not a dictionary (e.g., an integer), just copy it directly
             updated_points[k] = v
     
     # Extract key points
@@ -33,59 +25,36 @@ def calculate_geometry(points: Dict[str, Any], cylinder_extension: float) -> Dic
         cylinder_arm = np.array([points["cylinderArm"]["x"], points["cylinderArm"]["y"]])
     except (KeyError, TypeError) as e:
         print(f"Error extracting point coordinates: {e}")
-        print(f"Points data: {points}")
         return updated_points
     
-    # Extract cylinderMinLength if available, or use default
-    min_cylinder_length = points.get("cylinderMinLength", 10.0)  # Default min length if not provided
+    # Calculate vector from cylinder base to arm
+    cylinder_vector = cylinder_arm - cylinder_base
+    original_length = np.linalg.norm(cylinder_vector)
+    normalized_vector = cylinder_vector / original_length
     
-    # Calculate initial distances and vectors
-    initial_arm_length = np.linalg.norm(pivot_arm - pivot_base)
-    initial_cylinder_length = np.linalg.norm(cylinder_arm - cylinder_base)
+    # Calculate new arm position based on extension
+    # We'll use a simplified approach: extend along the cylinder's direction
+    min_cylinder_length = points.get("cylinderMinLength", 10.0)
+    target_length = min_cylinder_length + cylinder_extension
     
-    # Calculate target cylinder length
-    target_cylinder_length = min_cylinder_length + cylinder_extension
+    # Calculate the scaling factor based on extension
+    extension_factor = target_length / original_length
     
-    # Find the new position of the arm based on the cylinder extension
-    new_arm_position = solve_arm_position(
-        pivot_base, 
-        cylinder_base, 
-        initial_arm_length, 
-        target_cylinder_length,
-        pivot_arm,
-        cylinder_arm
-    )
+    # Apply the extension - modify cylinder arm position
+    new_cylinder_arm = cylinder_base + normalized_vector * target_length
     
-    # Update arm pivot position
-    updated_points["pivotArm"]["x"] = float(new_arm_position[0])
-    updated_points["pivotArm"]["y"] = float(new_arm_position[1])
+    # Update the cylinder arm position with new coordinates
+    updated_points["cylinderArm"]["x"] = float(new_cylinder_arm[0])
+    updated_points["cylinderArm"]["y"] = float(new_cylinder_arm[1])
     
-    # Calculate cylinder arm position based on the new arm position
-    # This assumes the arm and cylinder are directly connected at cylinderArm point
-    updated_points["cylinderArm"]["x"] = float(new_arm_position[0])
-    updated_points["cylinderArm"]["y"] = float(new_arm_position[1])
+    # Also update pivot arm position (if they share the same point)
+    if np.allclose(pivot_arm, cylinder_arm, atol=1.0):
+        updated_points["pivotArm"]["x"] = float(new_cylinder_arm[0])
+        updated_points["pivotArm"]["y"] = float(new_cylinder_arm[1])
     
-    # If cross-link exists, update its position too
-    if "crossLinkBase" in points and "crossLinkArm" in points:
-        cross_link_base = np.array([points["crossLinkBase"]["x"], points["crossLinkBase"]["y"]])
-        cross_link_arm = np.array([points["crossLinkArm"]["x"], points["crossLinkArm"]["y"]])
-        
-        # Calculate initial cross-link information
-        initial_cross_length = np.linalg.norm(cross_link_arm - cross_link_base)
-        
-        # Calculate angle relative to pivot arm
-        pivot_to_cross_angle = calculate_angle(pivot_base, pivot_arm, cross_link_arm)
-        
-        # Calculate new cross-link arm position
-        new_cross_position = calculate_point_at_angle_and_distance(
-            new_arm_position,
-            pivot_to_cross_angle,
-            initial_cross_length
-        )
-        
-        # Update cross-link position
-        updated_points["crossLinkArm"]["x"] = float(new_cross_position[0])
-        updated_points["crossLinkArm"]["y"] = float(new_cross_position[1])
+    # For debugging, print the changes
+    print(f"Original cylinder arm: {points['cylinderArm']}")
+    print(f"Updated cylinder arm: {updated_points['cylinderArm']}")
     
     return updated_points
 

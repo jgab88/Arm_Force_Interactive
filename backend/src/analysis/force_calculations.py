@@ -14,6 +14,9 @@ def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[
     Returns:
         Dictionary with force analysis results
     """
+    # Debug statements
+    print(f"calculate_forces called with cylinder_extension: {cylinder_extension}")
+
     # Extract key points
     try:
         pivot_base = np.array([points["pivotBase"]["x"], points["pivotBase"]["y"]])
@@ -76,6 +79,7 @@ def calculate_forces(points: Dict[str, Any], cylinder_extension: float) -> Dict[
     
     # Return comprehensive analysis
     return {
+        "cylinderExtension": round(cylinder_extension, 2),  # Add current extension to output
         "cylinderForce": round(cylinder_force, 2),
         "outputForce": round(output_force, 2),
         "mechanicalAdvantage": round(mechanical_advantage, 4),

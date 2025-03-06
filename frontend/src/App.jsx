@@ -5,7 +5,7 @@ import Controls from './components/Controls';
 import ForceAnalysis from './components/ForceAnalysis';
 import websocketService from './utils/websocket';
 import { calculateForcesHttp } from './utils/api';
-import './output.css';
+import './index.css';
 
 // Default initial position for the linkage system
 const defaultGeometry = {
@@ -34,6 +34,17 @@ function App() {
   // References to track changes
   const prevPointsRef = useRef(JSON.parse(JSON.stringify(defaultGeometry)));
   const prevExtensionRef = useRef(0);
+
+  // Function to handle API response results
+  const handleFetchResults = (results) => {
+    console.log("Setting new force data:", results.forceAnalysis);
+    console.log("Current extension:", cylinderExtension);
+    setForceData(results.forceAnalysis);
+    
+    // Check if points have actually been updated
+    console.log("Updated points received:", results.updatedPoints);
+    setPoints(results.updatedPoints);
+  };
 
   // Connect to WebSocket server only if real-time mode is enabled
   useEffect(() => {
@@ -80,16 +91,16 @@ function App() {
     // Clear any previous errors
     setErrorMessage('');
     
-    // Update force data
+    // Use the new handler function for WebSocket responses
+    handleFetchResults(data);
+    
+    // For debugging - log specific aspects
     if (data.forceAnalysis) {
       console.log('Received force analysis data');
-      setForceData(data.forceAnalysis);
     }
     
-    // Update points if they were changed by the backend
     if (data.updatedPoints) {
       console.log('Received updated points');
-      setPoints(data.updatedPoints);
     }
   }, []);
 
@@ -132,13 +143,8 @@ function App() {
         if (results.error) {
           setErrorMessage(results.message || 'An error occurred');
         } else {
-          if (results.forceAnalysis) {
-            setForceData(results.forceAnalysis);
-          }
-          
-          if (results.updatedPoints) {
-            setPoints(results.updatedPoints);
-          }
+          // Use the new handler function
+          handleFetchResults(results);
           
           // Clear any previous errors
           setErrorMessage('');
@@ -160,6 +166,8 @@ function App() {
     }
     
     // Check if values have actually changed
+    console.log("Checking for changes - cylinder extension:", cylinderExtension, "prev:", prevExtensionRef.current);
+    
     const pointsChanged = JSON.stringify(points) !== JSON.stringify(prevPointsRef.current);
     const extensionChanged = cylinderExtension !== prevExtensionRef.current;
     
@@ -167,6 +175,8 @@ function App() {
     if (!pointsChanged && !extensionChanged) {
       return;
     }
+    
+    console.log("Changes detected - triggering calculation");
     
     // Update refs for next comparison
     prevPointsRef.current = JSON.parse(JSON.stringify(points));

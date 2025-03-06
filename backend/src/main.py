@@ -3,7 +3,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import traceback
+import time
 from typing import Dict, Any
+
 
 # Import analysis modules
 from src.analysis.force_calculations import calculate_forces
@@ -56,24 +58,20 @@ async def calculate(request: Request):
 
 # Process incoming geometry data and return force analysis
 def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
-    """Process incoming geometry data and return force analysis"""
     try:
-        # Extract geometry parameters with error handling
+        # Extract geometry parameters
         points = data.get("points", {})
         cylinder_extension = data.get("cylinderExtension", 0)
         
-        # Handle ping/pong messages
-        if "ping" in data and data["ping"] is True:
-            return {"pong": True}
-        
-        # Handle pong responses - just acknowledge
-        if "pong" in data and data["pong"] is True:
-            return {"received": True}
+        print(f"Processing request with extension: {cylinder_extension}")
+        print(f"Initial points: {points.get('cylinderArm')}")
         
         # Calculate updated geometry if cylinder is moving
         if "simulationMode" in data and data["simulationMode"]:
             try:
-                points = calculate_geometry(points, cylinder_extension)
+                updated_points = calculate_geometry(points, cylinder_extension)
+                points = updated_points  # Make sure we use the updated points
+                print(f"Updated points after geometry calc: {points.get('cylinderArm')}")
             except Exception as e:
                 print(f"Error in calculate_geometry: {e}")
                 traceback.print_exc()
@@ -85,6 +83,7 @@ def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Calculate forces based on the geometry
         try:
             force_results = calculate_forces(points, cylinder_extension)
+            print(f"Force calculations complete. Changes applied: {force_results.get('cylinderExtension')}")
         except Exception as e:
             print(f"Error in calculate_forces: {e}")
             traceback.print_exc()
@@ -96,11 +95,12 @@ def process_linkage_data(data: Dict[str, Any]) -> Dict[str, Any]:
         # Return combined results
         return {
             "updatedPoints": points,
-            "forceAnalysis": force_results
+            "forceAnalysis": force_results,
+            "requestId": str(time.time())
         }
     except Exception as e:
-        # Catch-all for any other errors
-        print(f"Unexpected error in process_linkage_data: {e}")
+        # Catch-all error handler
+        print(f"Unexpected error: {e}")
         traceback.print_exc()
         return {
             "error": True,

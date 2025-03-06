@@ -11,12 +11,15 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
 
   // Effect to create or update the plot when data changes
   useEffect(() => {
-    // Skip processing if data hasn't changed to prevent unnecessary renders
-    if (!forceData || loading || JSON.stringify(forceData) === JSON.stringify(prevForceDataRef.current)) {
+    // Skip only if no data or loading
+    if (!forceData || loading) {
       return;
     }
 
-    prevForceDataRef.current = forceData;
+    console.log("Force data update - processing new data:", forceData);
+
+    // Force update reference to trigger re-render
+    prevForceDataRef.current = JSON.parse(JSON.stringify(forceData));
 
     // Extract data from forceData
     const { surfaceData } = forceData;
@@ -29,14 +32,6 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
 
     // Create the appropriate plot based on view type
     createPlot(viewType, x, y, z, currentPosition);
-
-    // Cleanup function
-    return () => {
-      if (plotInstance.current && plotContainer.current) {
-        Plotly.purge(plotContainer.current);
-        plotInstance.current = null;
-      }
-    };
   }, [forceData, viewType, loading]);
 
   // Handle window resize to make the plot responsive
@@ -88,7 +83,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
               name: 'Force Surface'
             }
           ];
-          
+
           // Add a marker for the current position if available
           if (currentPosition) {
             plotData.push({
@@ -119,7 +114,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
               name: 'Force Contours'
             }
           ];
-          
+
           // Add a marker for the current position
           if (currentPosition) {
             plotData.push({
@@ -135,7 +130,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
               name: 'Current Position'
             });
           }
-          
+
           // Adjust layout for 2D view
           layout.scene = undefined;
           layout.xaxis = { title: 'Cylinder Extension (inches)' };
@@ -155,7 +150,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
               name: 'Force Heatmap'
             }
           ];
-          
+
           // Add a marker for the current position
           if (currentPosition) {
             plotData.push({
@@ -175,13 +170,13 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
               name: 'Current Position'
             });
           }
-          
+
           // Adjust layout for heatmap
           layout.scene = undefined;
           layout.xaxis = { title: 'Cylinder Extension (inches)' };
           layout.yaxis = { title: 'Pressure (PSI)' };
           break;
-          
+
         default:
           // Default to surface plot
           plotData = [
@@ -202,7 +197,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
           plotContainer.current,
           plotData,
           layout,
-          { 
+          {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['sendDataToCloud', 'toggleHover'],
@@ -214,7 +209,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
           plotContainer.current,
           plotData,
           layout,
-          { 
+          {
             responsive: true,
             displayModeBar: true,
             modeBarButtonsToRemove: ['sendDataToCloud', 'toggleHover'],
@@ -247,7 +242,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
           </label>
         </div>
       </div>
-      
+
       {loading ? (
         <div className="loading-indicator">Loading analysis data...</div>
       ) : !forceData ? (
@@ -257,7 +252,7 @@ const ForceAnalysis = memo(({ forceData, loading }) => {
       ) : (
         <div className="plot-container" ref={plotContainer} style={{ height: '400px', width: '100%' }} />
       )}
-      
+
       {forceData && (
         <div className="force-metrics">
           <div className="metric">

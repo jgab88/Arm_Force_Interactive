@@ -3,6 +3,7 @@ const API_BASE_URL = 'http://localhost:8000';
 
 export const calculateForcesHttp = async (data) => {
   try {
+    console.log("Sending data to backend:", data);
     const response = await fetch(`${API_BASE_URL}/calculate`, {
       method: 'POST',
       headers: {
@@ -15,7 +16,9 @@ export const calculateForcesHttp = async (data) => {
       throw new Error(`HTTP error: ${response.status}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log("Received response from backend:", result);
+    return result;
   } catch (error) {
     console.error('API request failed:', error);
     throw error;
